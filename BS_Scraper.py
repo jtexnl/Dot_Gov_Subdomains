@@ -30,15 +30,15 @@ def RateLimited(maxPerSecond):
     return decorate
 
 @RateLimited(2)
-def crawlPage(link):
-	request = rq.get(link)
-	while True:
+def crawlPages(linkSet):
+	for link in linkSet:
+		request = rq.get(link, verify = False)
 		try:
 			response = request.text
 			soup = BeautifulSoup(response)
 			for a in soup.findAll('a'):
 				try:
-					if '.gov' in a['href']:
+					if '.gov' in a['href'] and not a['href'].startswith('/'):
 						if a['href'] not in linkSet:
 							if not str(a['href']).startswith("mailto"):
 								linkSet.append(a['href'])
@@ -48,6 +48,8 @@ def crawlPage(link):
 								continue
 				except KeyError:
 					continue
+		except requests.exceptions.MissingSchema, e:
+			continue
 		except urllib2.HTTPError, e:
 			continue
 		except urllib2.URLError, e:
@@ -58,5 +60,4 @@ def crawlPage(link):
 			continue
 
 if __name__ == "__main__":
-    for i in linkSet:
-        crawlPage(i)
+	crawlPages(linkSet)
