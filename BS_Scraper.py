@@ -13,34 +13,50 @@ output_writer=csv.writer(outputFile, lineterminator='\n')
 output_writer.writerow(['url'])
 requests_cache.install_cache('test_cache', backend='sqlite')
 
-counter = 0
-for i in linkSet:
-	request = urllib2.Request(i)
-	try:
-		response = urllib2.urlopen(request)
-		soup = BeautifulSoup(response)
-		for a in soup.findAll('a'):
-			try:
-				if '.gov' in a['href']:
-					if counter % 5000 == 0 and not counter == 0:
-						time.sleep(60)
-					if a['href'] not in linkSet:
-						if not str(a['href']).startswith("mailto"):
-							linkSet.append(a['href'])
-							outputLink = str(a['href'])
-							output_writer.writerow([outputLink])
-							counter += 1
-							print("processed link %i" %(counter))
-						else:
-							continue
-			except KeyError:
-				continue
-	except urllib2.HTTPError, e:
-		continue
-	except urllib2.URLError, e:
-		continue
-	except ValueError:
-		continue
-	except httplib.BadStatusLine, e:
-		continue
-print('scan complete')
+
+def RateLimited(maxPerSecond):
+    minInterval = 1.0 / float(maxPerSecond)
+    def decorate(func):
+        lastTimeCalled = [0.0]
+        def rateLimitedFunction(*args,**kargs):
+            elapsed = time.clock() - lastTimeCalled[0]
+            leftToWait = minInterval - elapsed
+            if leftToWait>0:
+                time.sleep(leftToWait)
+            ret = func(*args,**kargs)
+            lastTimeCalled[0] = time.clock()
+            return ret
+        return rateLimitedFunction
+    return decorate
+
+@RateLimited(2)
+def crawlPage(link):
+	request = rq.get(link)
+	while True:
+		try:
+			response = request.text
+			soup = BeautifulSoup(response)
+			for a in soup.findAll('a'):
+				try:
+					if '.gov' in a['href']:
+						if a['href'] not in linkSet:
+							if not str(a['href']).startswith("mailto"):
+								linkSet.append(a['href'])
+								outputLink = str(a['href'])
+								output_writer.writerow([outputLink])
+							else:
+								continue
+				except KeyError:
+					continue
+		except urllib2.HTTPError, e:
+			continue
+		except urllib2.URLError, e:
+			continue
+		except ValueError:
+			continue
+		except httplib.BadStatusLine, e:
+			continue
+
+if __name__ == "__main__":
+    for i in linkSet:
+        crawlPage(i)
