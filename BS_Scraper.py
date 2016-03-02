@@ -31,33 +31,35 @@ def RateLimited(maxPerSecond):
 
 @RateLimited(2)
 def crawlPages(linkSet):
-	for link in linkSet:
-		request = rq.get(link, verify = False)
-		try:
-			response = request.text
-			soup = BeautifulSoup(response)
-			for a in soup.findAll('a'):
-				try:
-					if '.gov' in a['href'] and not a['href'].startswith('/'):
-						if a['href'] not in linkSet:
-							if not str(a['href']).startswith("mailto"):
-								linkSet.append(a['href'])
-								outputLink = str(a['href'])
-								output_writer.writerow([outputLink])
-							else:
-								continue
-				except KeyError:
-					continue
-		except requests.exceptions.MissingSchema, e:
-			continue
-		except urllib2.HTTPError, e:
-			continue
-		except urllib2.URLError, e:
-			continue
-		except ValueError:
-			continue
-		except httplib.BadStatusLine, e:
-			continue
+    for link in linkSet:
+        request = rq.get(link, verify = False)
+        try:
+            response = request.text
+            soup = BeautifulSoup(response)
+            for a in soup.findAll('a'):
+                try:
+                    if '.gov' in a['href'] and not a['href'].startswith('/'):
+                        if a['href'] not in linkSet:
+                            if not str(a['href']).startswith("mailto"):
+                                linkSet.append(a['href'])
+                                outputLink = str(a['href'])
+                                output_writer.writerow([outputLink])
+                            else:
+                                continue
+                except KeyError:
+                    continue
+        except requests.exceptions.ConnectionError as e:
+            continue
+        except requests.exceptions.MissingSchema, e:
+            continue
+        except urllib2.HTTPError, e:
+            continue
+        except urllib2.URLError, e:
+            continue
+        except ValueError:
+            continue
+        except httplib.BadStatusLine, e:
+            continue
 
 if __name__ == "__main__":
-	crawlPages(linkSet)
+    crawlPages(linkSet)
